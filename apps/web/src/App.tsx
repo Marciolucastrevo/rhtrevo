@@ -11,6 +11,7 @@ type Company = { id: string; name: string; legal_name: string | null; registrati
 type Area = { id: string; name: string; code: string | null; active: boolean }
 type Unit = { id: string; name: string; code: string | null; company_id: string; active: boolean }
 type JobRole = { id: string; name: string; active: boolean }
+type Team = { id: string; name: string; company_id: string | null; unit_id: string | null; area_id: string | null; active: boolean }
 type Employee = { id: string; full_name: string; active: boolean }
 type Assignment = { id: string; employee_id: string; kind: 'employment' | 'functional' | 'technical' | 'process' | 'portfolio' | 'temporary'; company_id: string | null; unit_id: string | null; area_id: string | null; job_role_id: string | null; is_primary: boolean; starts_at: string; ends_at: string | null; source_employee_code: string | null }
 
@@ -34,6 +35,7 @@ function App() {
   const [areas, setAreas] = useState<Area[]>([])
   const [units, setUnits] = useState<Unit[]>([])
   const [jobRoles, setJobRoles] = useState<JobRole[]>([])
+  const [teams, setTeams] = useState<Team[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('')
@@ -66,20 +68,22 @@ function App() {
     if (!supabase || !isRootAdmin) return
     setStructureLoading(true)
     setStructureError(null)
-    const [companyResult, areaResult, unitResult, jobRoleResult, employeeResult, assignmentResult] = await Promise.all([
+    const [companyResult, areaResult, unitResult, jobRoleResult, teamResult, employeeResult, assignmentResult] = await Promise.all([
       supabase.from('companies').select('id, name, legal_name, registration_number, active').order('name'),
       supabase.from('org_areas').select('id, name, code, active').order('name'),
       supabase.from('org_units').select('id, name, code, company_id, active').order('name'),
       supabase.from('job_roles').select('id, name, active').order('name'),
+      supabase.from('teams').select('id, name, company_id, unit_id, area_id, active').order('name'),
       supabase.from('employees').select('id, full_name, active').order('full_name'),
       supabase.from('employee_assignments').select('id, employee_id, kind, company_id, unit_id, area_id, job_role_id, is_primary, starts_at, ends_at, source_employee_code').order('starts_at', { ascending: false }),
     ])
-    const error = companyResult.error ?? areaResult.error ?? unitResult.error ?? jobRoleResult.error ?? employeeResult.error ?? assignmentResult.error
+    const error = companyResult.error ?? areaResult.error ?? unitResult.error ?? jobRoleResult.error ?? teamResult.error ?? employeeResult.error ?? assignmentResult.error
     if (error) setStructureError('Não foi possível carregar os cadastros organizacionais.')
     setCompanies((companyResult.data ?? []) as Company[])
     setAreas((areaResult.data ?? []) as Area[])
     setUnits((unitResult.data ?? []) as Unit[])
     setJobRoles((jobRoleResult.data ?? []) as JobRole[])
+    setTeams((teamResult.data ?? []) as Team[])
     const nextEmployees = (employeeResult.data ?? []) as Employee[]
     setEmployees(nextEmployees)
     setAssignments((assignmentResult.data ?? []) as Assignment[])
@@ -128,6 +132,24 @@ function App() {
     void refreshStructure()
   }
 
+  async function createJobRole(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!supabase) return
+    const form = new FormData(event.currentTarget)
+    const { error } = await supabase.from('job_roles').insert({ name: String(form.get('name')).trim(), cbo_code: String(form.get('cbo_code')).trim() || null })
+    if (error) return setStructureError('Não foi possível criar o cargo.')
+    event.currentTarget.reset(); void refreshStructure()
+  }
+
+  async function createTeam(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!supabase) return
+    const form = new FormData(event.currentTarget)
+    const { error } = await supabase.from('teams').insert({ name: String(form.get('name')).trim(), company_id: String(form.get('company_id')) || null, unit_id: String(form.get('unit_id')) || null, area_id: String(form.get('area_id')) || null })
+    if (error) return setStructureError('Não foi possível criar a equipe.')
+    event.currentTarget.reset(); void refreshStructure()
+  }
+
   async function createUnit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!supabase) return
@@ -142,7 +164,7 @@ function App() {
     void refreshStructure()
   }
 
-  async function rename(table: 'companies' | 'org_areas' | 'org_units', id: string, currentName: string) {
+  async function rename(table: 'companies' | 'org_areas' | 'org_units' | 'job_roles' | 'teams', id: string, currentName: string) {
     if (!supabase) return
     const name = window.prompt('Novo nome:', currentName)?.trim()
     if (!name || name === currentName) return
@@ -151,7 +173,7 @@ function App() {
     void refreshStructure()
   }
 
-  async function toggleActive(table: 'companies' | 'org_areas' | 'org_units', id: string, active: boolean) {
+  async function toggleActive(table: 'companies' | 'org_areas' | 'org_units' | 'job_roles' | 'teams', id: string, active: boolean) {
     if (!supabase) return
     const { error } = await supabase.from(table).update({ active: !active }).eq('id', id)
     if (error) return setStructureError('Não foi possível atualizar o status do cadastro.')
@@ -214,7 +236,7 @@ function App() {
     <section className="hero" aria-labelledby="page-title"><p className="eyebrow">Fundação administrativa</p><h2 id="page-title">Plataforma privada em preparação</h2><p>A primeira entrega estabelece a estrutura organizacional, os vínculos entre pessoas e as permissões configuráveis por usuário — antes da migração de qualquer dado real.</p></section>
     <section className="admin-state" aria-label="Estado do acesso atual"><div><p className="eyebrow">Usuário autenticado</p><strong>{session.user.email}</strong><p>{isRootAdmin ? 'Administrador raiz ativo' : 'Acesso sem papel administrativo ativo'}</p></div><span className={isRootAdmin ? 'private-badge' : 'warning-badge'}>{isRootAdmin ? 'root_admin' : 'Revisar acesso'}</span></section>
     {isRootAdmin && <nav className="module-nav" aria-label="Módulos da plataforma">{([{ key: 'home', label: 'Visão geral' }, { key: 'structure', label: 'Estrutura' }, { key: 'people', label: 'Pessoas & vínculos' }, { key: 'organogram', label: 'Organograma' }, { key: 'authorizations', label: 'Autorizações' }, { key: 'audit', label: 'Auditoria' }] as Array<{ key: ModuleKey; label: string }>).map((module) => <button className={activeModule === module.key ? 'module-active' : ''} type="button" key={module.key} onClick={() => setActiveModule(module.key)}>{module.label}</button>)}</nav>}
-    {isRootAdmin && activeModule === 'structure' && <section className="structure-section"><div className="section-heading"><div><p className="eyebrow">Configuração organizacional</p><h2>Empresas, unidades e áreas</h2><p>Cadastros vivos para refletir mudanças da operação sem depender de código.</p></div><button className="outline-button" type="button" onClick={() => void refreshStructure()} disabled={structureLoading}>{structureLoading ? 'Atualizando…' : 'Atualizar'}</button></div>{structureError && <p className="form-error">{structureError}</p>}<div className="structure-grid"><article className="structure-card"><h3>Empresas</h3><form onSubmit={createCompany}><input name="name" placeholder="Nome da empresa" required /><input name="legal_name" placeholder="Razão social (opcional)" /><input name="registration_number" placeholder="CNPJ (opcional)" /><button type="submit">Adicionar empresa</button></form><RecordList records={companies} onRename={(item) => void rename('companies', item.id, item.name)} onToggle={(item) => void toggleActive('companies', item.id, item.active)} /></article><article className="structure-card"><h3>Áreas</h3><form onSubmit={createArea}><input name="name" placeholder="Nome da área" required /><input name="code" placeholder="Sigla (opcional)" /><button type="submit">Adicionar área</button></form><RecordList records={areas} onRename={(item) => void rename('org_areas', item.id, item.name)} onToggle={(item) => void toggleActive('org_areas', item.id, item.active)} /></article><article className="structure-card"><h3>Unidades</h3><form onSubmit={createUnit}><select name="company_id" required defaultValue=""><option value="" disabled>Selecione a empresa</option>{companies.filter((company) => company.active).map((company) => <option value={company.id} key={company.id}>{company.name}</option>)}</select><input name="name" placeholder="Nome da unidade" required /><input name="code" placeholder="Código (opcional)" /><button type="submit" disabled={!companies.some((company) => company.active)}>Adicionar unidade</button></form><RecordList records={units.map((unit) => ({ ...unit, detail: companies.find((company) => company.id === unit.company_id)?.name ?? 'Empresa não encontrada' }))} onRename={(item) => void rename('org_units', item.id, item.name)} onToggle={(item) => void toggleActive('org_units', item.id, item.active)} /></article></div></section>}
+    {isRootAdmin && activeModule === 'structure' && <section className="structure-section"><div className="section-heading"><div><p className="eyebrow">Configuração organizacional</p><h2>Empresas, unidades e áreas</h2><p>Cadastros vivos para refletir mudanças da operação sem depender de código.</p></div><button className="outline-button" type="button" onClick={() => void refreshStructure()} disabled={structureLoading}>{structureLoading ? 'Atualizando…' : 'Atualizar'}</button></div>{structureError && <p className="form-error">{structureError}</p>}<div className="structure-grid"><article className="structure-card"><h3>Empresas</h3><form onSubmit={createCompany}><input name="name" placeholder="Nome da empresa" required /><input name="legal_name" placeholder="Razão social (opcional)" /><input name="registration_number" placeholder="CNPJ (opcional)" /><button type="submit">Adicionar empresa</button></form><RecordList records={companies} onRename={(item) => void rename('companies', item.id, item.name)} onToggle={(item) => void toggleActive('companies', item.id, item.active)} /></article><article className="structure-card"><h3>Áreas</h3><form onSubmit={createArea}><input name="name" placeholder="Nome da área" required /><input name="code" placeholder="Sigla (opcional)" /><button type="submit">Adicionar área</button></form><RecordList records={areas} onRename={(item) => void rename('org_areas', item.id, item.name)} onToggle={(item) => void toggleActive('org_areas', item.id, item.active)} /></article><article className="structure-card"><h3>Unidades</h3><form onSubmit={createUnit}><select name="company_id" required defaultValue=""><option value="" disabled>Selecione a empresa</option>{companies.filter((company) => company.active).map((company) => <option value={company.id} key={company.id}>{company.name}</option>)}</select><input name="name" placeholder="Nome da unidade" required /><input name="code" placeholder="Código (opcional)" /><button type="submit" disabled={!companies.some((company) => company.active)}>Adicionar unidade</button></form><RecordList records={units.map((unit) => ({ ...unit, detail: companies.find((company) => company.id === unit.company_id)?.name ?? 'Empresa não encontrada' }))} onRename={(item) => void rename('org_units', item.id, item.name)} onToggle={(item) => void toggleActive('org_units', item.id, item.active)} /></article><article className="structure-card"><h3>Cargos</h3><form onSubmit={createJobRole}><input name="name" placeholder="Nome do cargo" required /><input name="cbo_code" placeholder="Código CBO (opcional)" /><button type="submit">Adicionar cargo</button></form><RecordList records={jobRoles} onRename={(item) => void rename('job_roles', item.id, item.name)} onToggle={(item) => void toggleActive('job_roles', item.id, item.active)} /></article><article className="structure-card"><h3>Equipes</h3><form onSubmit={createTeam}><input name="name" placeholder="Nome da equipe" required /><select name="company_id" defaultValue=""><option value="">Empresa (opcional)</option>{companies.filter((company) => company.active).map((company) => <option value={company.id} key={company.id}>{company.name}</option>)}</select><select name="area_id" defaultValue=""><option value="">Área (opcional)</option>{areas.filter((area) => area.active).map((area) => <option value={area.id} key={area.id}>{area.name}</option>)}</select><button type="submit">Adicionar equipe</button></form><RecordList records={teams.map((team) => ({ ...team, detail: areas.find((area) => area.id === team.area_id)?.name ?? companies.find((company) => company.id === team.company_id)?.name ?? 'Sem escopo definido' }))} onRename={(item) => void rename('teams', item.id, item.name)} onToggle={(item) => void toggleActive('teams', item.id, item.active)} /></article></div></section>}
     {isRootAdmin && activeModule === 'people' && <section className="people-section"><div className="section-heading"><div><p className="eyebrow">Pessoas e vínculos</p><h2>Perfil organizacional</h2><p>Defina a empresa de registro e as atuações adicionais de cada pessoa, com histórico preservado.</p></div></div><div className="people-layout"><aside className="people-list"><label>Localizar pessoa<input value={personQuery} onChange={(event) => setPersonQuery(event.target.value)} placeholder="Nome do colaborador" /></label><p>{visibleEmployees.length} pessoas encontradas</p><div>{visibleEmployees.map((employee) => <button className={employee.id === selectedEmployeeId ? 'person-selected' : ''} key={employee.id} type="button" onClick={() => setSelectedEmployeeId(employee.id)}>{employee.full_name}</button>)}</div></aside><article className="assignment-card">{selectedEmployee ? <><div className="person-title"><div><p className="eyebrow">Cadastro selecionado</p><h3>{selectedEmployee.full_name}</h3></div><span className={selectedEmployee.active ? 'record-active' : 'record-inactive'}>{selectedEmployee.active ? 'Ativo' : 'Inativo'}</span></div><h4>Vínculos atuais e históricos</h4><div className="assignment-list">{selectedAssignments.length === 0 && <p className="empty-state">Nenhum vínculo registrado.</p>}{selectedAssignments.map((assignment) => <div className="assignment-row" key={assignment.id}><div><strong>{companies.find((company) => company.id === assignment.company_id)?.name ?? 'Sem empresa'}</strong><small>{jobRoles.find((role) => role.id === assignment.job_role_id)?.name ?? 'Sem função'} · {areas.find((area) => area.id === assignment.area_id)?.name ?? 'Sem área'} · {assignment.kind}</small><small>{assignment.starts_at}{assignment.ends_at ? ` até ${assignment.ends_at}` : ' · vigente'}{assignment.source_employee_code ? ` · matrícula ERP ${assignment.source_employee_code}` : ''}</small></div><div className="record-actions">{assignment.is_primary ? <span className="record-active">Registro principal</span> : !assignment.ends_at && <button type="button" onClick={() => void setPrimaryAssignment(assignment)}>Definir principal</button>}{!assignment.ends_at && <button type="button" onClick={() => void endAssignment(assignment)}>Encerrar</button>}</div></div>)}</div><h4>Novo vínculo</h4><form className="assignment-form" onSubmit={createAssignment}><select name="kind" defaultValue="functional"><option value="employment">Registro empregatício</option><option value="functional">Atuação funcional</option><option value="technical">Responsabilidade técnica</option><option value="process">Responsável por processo</option><option value="portfolio">Carteira</option><option value="temporary">Atuação temporária</option></select><select name="company_id" required defaultValue=""><option value="" disabled>Empresa</option>{companies.filter((company) => company.active).map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}</select><select name="unit_id" defaultValue=""><option value="">Unidade (opcional)</option>{units.filter((unit) => unit.active).map((unit) => <option key={unit.id} value={unit.id}>{companies.find((company) => company.id === unit.company_id)?.name} — {unit.name}</option>)}</select><select name="area_id" defaultValue=""><option value="">Área (opcional)</option>{areas.filter((area) => area.active).map((area) => <option key={area.id} value={area.id}>{area.name}</option>)}</select><select name="job_role_id" defaultValue=""><option value="">Função/cargo (opcional)</option>{jobRoles.filter((role) => role.active).map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select><label>Início<input name="starts_at" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required /></label><label className="checkbox-label"><input name="is_primary" type="checkbox" /> Empresa de registro principal</label><textarea name="notes" placeholder="Observação (opcional)" /><button type="submit">Adicionar vínculo</button></form></> : <p className="empty-state">Selecione uma pessoa para administrar seus vínculos.</p>}</article></div></section>}
     {activeModule === 'home' && <section className="foundation-grid" aria-label="Fundamentos da primeira entrega">{foundations.map(([title, description], index) => <article className="foundation-card" key={title}><span className="card-index">0{index + 1}</span><h3>{title}</h3><p>{description}</p></article>)}</section>}
     {isRootAdmin && activeModule === 'organogram' && <ModuleComingSoon title="Organograma" description="A visualização organizacional será construída sobre empresas, áreas, unidades, vínculos e relações já cadastrados." />}
