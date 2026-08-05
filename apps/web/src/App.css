@@ -1,0 +1,137 @@
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  box-sizing: border-box;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2rem clamp(1.25rem, 4vw, 4rem) 4rem;
+}
+
+.topbar,
+.next-step {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.topbar {
+  padding-bottom: 2rem;
+  border-bottom: 1px solid #dbe4de;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0;
+  color: #123126;
+  font-size: 1.5rem;
+}
+
+.eyebrow {
+  margin-bottom: 0.4rem;
+  color: #4d7562;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.status,
+.private-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.status-checking { background: #fff4cf; color: #715900; }
+.status-ready { background: #ddf6e7; color: #14603b; }
+.status-unavailable { background: #f5e9e9; color: #7d2d2d; }
+
+.hero {
+  max-width: 760px;
+  padding: 5rem 0 3rem;
+}
+
+.hero h2,
+.next-step h2 {
+  margin-bottom: 1rem;
+  color: #123126;
+  font-size: clamp(2rem, 5vw, 3.7rem);
+  line-height: 1.05;
+}
+
+.hero p:not(.eyebrow),
+.next-step p:not(.eyebrow),
+.foundation-card p {
+  color: #4c5b53;
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.foundation-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.foundation-card {
+  min-height: 205px;
+  border: 1px solid #dbe4de;
+  border-radius: 1rem;
+  background: #ffffff;
+  padding: 1.5rem;
+  box-shadow: 0 8px 24px rgba(18, 49, 38, 0.06);
+}
+
+.card-index {
+  color: #5c8f73;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.foundation-card h3 {
+  margin: 1.25rem 0 0.75rem;
+  color: #17382c;
+  font-size: 1.15rem;
+}
+
+.foundation-card p {
+  margin-bottom: 0;
+  font-size: 0.95rem;
+}
+
+.next-step {
+  margin-top: 3rem;
+  border-radius: 1.25rem;
+  background: #17382c;
+  padding: 2rem;
+}
+
+.next-step h2,
+.next-step p:not(.eyebrow) { color: #ffffff; }
+.next-step p:not(.eyebrow) { opacity: 0.8; }
+.next-step .eyebrow { color: #9bc7ac; }
+.private-badge { background: #d8f2df; color: #175237; white-space: nowrap; }
+
+@media (max-width: 850px) {
+  .foundation-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .app-shell { padding-top: 1.25rem; }
+  .topbar,
+  .next-step { align-items: flex-start; flex-direction: column; }
+  .hero { padding-top: 3rem; }
+  .foundation-grid { grid-template-columns: 1fr; }
+}

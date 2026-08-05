@@ -1,0 +1,22 @@
+# Dependencies and builds
+node_modules/
+dist/
+.vite/
+coverage/
+*.tsbuildinfo
+
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Supabase local development
+supabase/.temp/
+supabase/.branches/
+
+# Operating system and editors
+.DS_Store
+.idea/
+.vscode/
