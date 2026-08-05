@@ -226,8 +226,32 @@ h1 {
 .record-active { background: #ddf6e7; color: #14603b; }
 .record-inactive { background: #f0f0f0; color: #617067; }
 
+.people-section { margin: 3rem 0; }
+.people-layout { display: grid; grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.7fr); gap: 1rem; }
+.people-list, .assignment-card { border: 1px solid #dbe4de; border-radius: 1rem; background: #ffffff; padding: 1.25rem; }
+.people-list label { display: grid; gap: 0.4rem; color: #254837; font-size: 0.85rem; font-weight: 800; }
+.people-list input, .assignment-form select, .assignment-form input, .assignment-form textarea { box-sizing: border-box; width: 100%; border: 1px solid #b9c9bf; border-radius: 0.5rem; padding: 0.7rem; color: #17382c; font: inherit; }
+.people-list > p { color: #6c7a72; font-size: 0.8rem; }
+.people-list > div { display: grid; max-height: 560px; overflow: auto; }
+.people-list button { border: 0; border-bottom: 1px solid #edf1ee; background: transparent; padding: 0.7rem 0.45rem; color: #254837; cursor: pointer; text-align: left; font: inherit; }
+.people-list button:hover, .people-list .person-selected { border-radius: 0.4rem; background: #eaf6ee; color: #123126; font-weight: 800; }
+.person-title { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }
+.person-title h3 { margin-bottom: 1rem; color: #123126; font-size: 1.4rem; }
+.assignment-card h4 { margin: 1.5rem 0 0.65rem; color: #254837; }
+.assignment-list { display: grid; gap: 0.65rem; }
+.assignment-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border: 1px solid #edf1ee; border-radius: 0.6rem; padding: 0.8rem; }
+.assignment-row strong, .assignment-row small { display: block; }
+.assignment-row small { margin-top: 0.25rem; color: #6c7a72; font-size: 0.8rem; }
+.assignment-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; }
+.assignment-form textarea, .assignment-form button { grid-column: 1 / -1; }
+.assignment-form textarea { min-height: 80px; resize: vertical; }
+.assignment-form button { border: 0; border-radius: 0.5rem; background: #17382c; padding: 0.75rem; color: #ffffff; cursor: pointer; font: inherit; font-weight: 800; }
+.checkbox-label { display: flex; align-items: center; gap: 0.5rem; color: #254837; font-size: 0.85rem; font-weight: 700; }
+.checkbox-label input { width: auto; }
+
 @media (max-width: 850px) {
   .foundation-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .structure-grid, .people-layout { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {
@@ -235,5 +259,6 @@ h1 {
   .topbar,
   .next-step { align-items: flex-start; flex-direction: column; }
   .hero { padding-top: 3rem; }
-  .foundation-grid { grid-template-columns: 1fr; }
+  .foundation-grid, .assignment-form { grid-template-columns: 1fr; }
+  .assignment-row { align-items: flex-start; flex-direction: column; }
 }
