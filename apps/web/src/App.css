@@ -269,3 +269,4 @@ h1 {
   .foundation-grid, .assignment-form { grid-template-columns: 1fr; }
   .assignment-row { align-items: flex-start; flex-direction: column; }
 }
+.organogram-section{margin:3rem 0}.organogram-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1rem}.organogram-company{border:1px solid #dbe4de;border-radius:1rem;background:#fff;padding:1.25rem}.organogram-company h3{color:#17382c;margin-bottom:.3rem}.organogram-company small,.organogram-note{color:#6c7a72}.organogram-unit{display:flex;justify-content:space-between;gap:.6rem;border-top:1px solid #edf1ee;margin-top:.75rem;padding-top:.75rem;font-size:.88rem}.organogram-unit span{color:#4d7562}.organogram-note{margin-top:1rem}@media(max-width:850px){.organogram-grid{grid-template-columns:1fr}}
