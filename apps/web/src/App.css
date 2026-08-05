@@ -203,6 +203,13 @@ h1 {
 .admin-state p:last-child { margin: 0.45rem 0 0; color: #4c5b53; }
 .warning-badge { background: #fff4cf; color: #715900; }
 
+.module-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1.5rem 0 2rem; border-bottom: 1px solid #dbe4de; padding-bottom: 1rem; }
+.module-nav button { border: 1px solid #dbe4de; border-radius: 999px; background: #ffffff; padding: 0.55rem 0.8rem; color: #275b43; cursor: pointer; font: inherit; font-size: 0.86rem; font-weight: 800; }
+.module-nav button:hover, .module-nav .module-active { border-color: #17382c; background: #17382c; color: #ffffff; }
+.module-placeholder { margin: 3rem 0; border: 1px dashed #8daf9b; border-radius: 1rem; background: #f6fbf7; padding: 2.5rem; }
+.module-placeholder h2 { margin-bottom: 0.75rem; color: #123126; }
+.module-placeholder p:not(.eyebrow) { max-width: 680px; color: #4c5b53; line-height: 1.6; }
+.module-placeholder span { color: #4d7562; font-size: 0.88rem; font-weight: 800; }
 .structure-section { margin: 3rem 0; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 1.5rem; margin-bottom: 1.25rem; }
 .section-heading h2 { margin-bottom: 0.5rem; color: #123126; font-size: 1.7rem; }
