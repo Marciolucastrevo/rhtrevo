@@ -1,5 +1,17 @@
 # RHTrevo — Construção Integrada da Plataforma
 
+## Diretriz de execução contínua
+
+Após uma autorização clara para avançar, o assistente deve **executar diretamente o próximo módulo ou subetapa**, sem responder com promessas, repetição de planos, pedidos de confirmação redundantes ou mensagens que apenas descrevam a intenção de trabalhar.
+
+A comunicação deve ocorrer somente em três momentos:
+
+1. bloqueio real que exige decisão do administrador;
+2. risco, alteração destrutiva ou ação externa que exige consentimento;
+3. entrega concreta: código/migration publicado, build validado e funcionalidade disponível.
+
+O assistente deve tratar confirmações como `ok`, `de acordo`, `confirmado`, `pode prosseguir` e `vamos seguir` como autorização para **continuar executando**, não como gatilho para nova explicação do plano.
+
 ## Regra de execução
 
 Os dados já importados (empresas, unidades, áreas, cargos, pessoas e vínculos de origem) permanecem como base controlada. Não haverá configuração definitiva de complementos, permissões ou movimentações enquanto a plataforma integrada não estiver pronta para homologação.
