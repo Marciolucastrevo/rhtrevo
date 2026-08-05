@@ -203,6 +203,29 @@ h1 {
 .admin-state p:last-child { margin: 0.45rem 0 0; color: #4c5b53; }
 .warning-badge { background: #fff4cf; color: #715900; }
 
+.structure-section { margin: 3rem 0; }
+.section-heading { display: flex; align-items: end; justify-content: space-between; gap: 1.5rem; margin-bottom: 1.25rem; }
+.section-heading h2 { margin-bottom: 0.5rem; color: #123126; font-size: 1.7rem; }
+.section-heading p:not(.eyebrow) { margin: 0; color: #4c5b53; }
+.outline-button { border: 1px solid #6d9780; border-radius: 0.55rem; background: #ffffff; padding: 0.7rem 0.9rem; color: #275b43; cursor: pointer; font: inherit; font-weight: 800; }
+.structure-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.structure-card { border: 1px solid #dbe4de; border-radius: 1rem; background: #ffffff; padding: 1.25rem; }
+.structure-card h3 { margin-bottom: 1rem; color: #17382c; }
+.structure-card form { display: grid; gap: 0.6rem; }
+.structure-card input, .structure-card select { width: 100%; border: 1px solid #b9c9bf; border-radius: 0.5rem; padding: 0.7rem; color: #17382c; font: inherit; }
+.structure-card form button { border: 0; border-radius: 0.5rem; background: #17382c; padding: 0.7rem; color: #ffffff; cursor: pointer; font: inherit; font-weight: 800; }
+.structure-card form button:disabled, .outline-button:disabled { cursor: wait; opacity: 0.55; }
+.empty-state { margin: 1.25rem 0 0; color: #6c7a72; font-size: 0.9rem; }
+.record-list { display: grid; gap: 0.7rem; margin: 1.25rem 0 0; padding: 0; list-style: none; }
+.record-list li { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; border-top: 1px solid #edf1ee; padding-top: 0.75rem; }
+.record-list strong, .record-list small { display: block; }
+.record-list small { margin-top: 0.2rem; color: #6c7a72; }
+.record-actions { display: flex; flex-wrap: wrap; justify-content: end; gap: 0.35rem; }
+.record-actions button { border: 0; background: transparent; color: #275b43; cursor: pointer; font: inherit; font-size: 0.8rem; font-weight: 700; }
+.record-active, .record-inactive { border-radius: 999px; padding: 0.2rem 0.45rem; font-size: 0.7rem; font-weight: 800; }
+.record-active { background: #ddf6e7; color: #14603b; }
+.record-inactive { background: #f0f0f0; color: #617067; }
+
 @media (max-width: 850px) {
   .foundation-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
