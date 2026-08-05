@@ -20,9 +20,9 @@
 | 19000 | Viva Ambiental | 20 |
 | 20000 | Vavie (Posto Trevo III PVH) | 9 |
 
-## Mapeamentos provisórios a confirmar
+## Mapeamentos complementares confirmados
 
-Estes códigos aparecem no relatório, mas não foram listados diretamente no mapa operacional. A proposta abaixo agrupa-os pela razão social do ERP; nenhuma carga será executada usando essas associações sem confirmação.
+Os códigos abaixo aparecem no relatório e foram confirmados como pertencentes às operações indicadas:
 
 | Código ERP | Razão social no relatório | Proposta operacional | Registros |
 |---:|---|---|---:|
@@ -30,6 +30,19 @@ Estes códigos aparecem no relatório, mas não foram listados diretamente no ma
 | 3001 | Trevo Transportes e Logística LTDA | Trevo Transportes | 7 |
 | 3002 | Trevo Transportes e Logística LTDA | Trevo Transportes | 15 |
 | 4001 | Trevo Peças e Serviços para Automóveis LTDA | Trevo Peças | 16 |
+
+## Regra de vínculo entre pessoa e empresa
+
+Cada código ERP será preservado como um contexto próprio de registro/empresa, mesmo quando dois ou mais códigos compartilham o mesmo nome operacional. Isso preserva matrícula, histórico e empresa de registro.
+
+Uma pessoa terá:
+
+- **um vínculo principal**: empresa em que está formalmente registrada naquele período;
+- **zero ou vários vínculos adicionais**: atuação operacional, técnica, funcional, de processo ou temporária em outras empresas, unidades e áreas;
+- **uma função e autonomia próprias em cada vínculo**;
+- **histórico de vigência**: transferências encerram o vínculo anterior e iniciam um novo, sem apagar o passado.
+
+Assim, uma pessoa registrada na empresa A pode atuar em unidades/empresas B e C sem perder o vínculo empregatício de origem. A alteração posterior será feita na tela do perfil/organograma, sem necessidade de código ou nova importação.
 
 ## Códigos informados sem empregados ativos neste relatório
 
