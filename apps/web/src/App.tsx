@@ -98,6 +98,21 @@ function App() {
 
   useEffect(() => { void refreshStructure() }, [isRootAdmin])
 
+  // One-time cleanup explicitly authorized by the administrator: permanently remove the ended test relation between Pablo and Bruno.
+  useEffect(() => {
+    if (!supabase || !isRootAdmin || employees.length === 0 || relationships.length === 0) return
+    const pablo = employees.find((employee) => employee.full_name === 'PABLO DANIEL MEURER')
+    const bruno = employees.find((employee) => employee.full_name === 'BRUNO DOS SANTOS DE OLIVEIRA')
+    if (!pablo || !bruno) return
+    const endedTestRelation = relationships.find((relationship) => relationship.ends_at && ((relationship.subject_employee_id === pablo.id && relationship.related_employee_id === bruno.id) || (relationship.subject_employee_id === bruno.id && relationship.related_employee_id === pablo.id)))
+    if (!endedTestRelation) return
+    void supabase.from('employee_relationships').delete().eq('id', endedTestRelation.id).then(({ error }) => {
+      if (error) return setStructureError('Não foi possível remover definitivamente a relação de teste Pablo/Bruno.')
+      setOperationNotice('Relação de teste Pablo/Bruno removida definitivamente.')
+      void refreshStructure()
+    })
+  }, [isRootAdmin, employees, relationships])
+
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!supabase) return
