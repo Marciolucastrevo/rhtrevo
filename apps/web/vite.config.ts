@@ -7,5 +7,6 @@ export default defineConfig({
   server: {
     // Private Tailscale HTTPS preview for the RHTrevo development instance.
     allowedHosts: ['macbook-pro-de-marcio.tail5726a0.ts.net'],
+    hmr: { overlay: false },
   },
 })
