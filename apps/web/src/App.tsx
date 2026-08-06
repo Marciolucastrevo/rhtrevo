@@ -98,6 +98,21 @@ function App() {
 
   useEffect(() => { void refreshStructure() }, [isRootAdmin])
 
+  // Controlled correction requested by the administrator: Pablo manages Bruno.
+  useEffect(() => {
+    if (!supabase || !isRootAdmin || employees.length === 0 || relationships.length === 0) return
+    const pablo = employees.find((employee) => employee.full_name === 'PABLO DANIEL MEURER')
+    const bruno = employees.find((employee) => employee.full_name === 'BRUNO DOS SANTOS DE OLIVEIRA')
+    if (!pablo || !bruno) return
+    const inverted = relationships.find((relationship) => relationship.subject_employee_id === pablo.id && relationship.related_employee_id === bruno.id && relationship.kind === 'direct_manager' && !relationship.ends_at)
+    if (!inverted) return
+    void supabase.from('employee_relationships').update({ subject_employee_id: bruno.id, related_employee_id: pablo.id }).eq('id', inverted.id).then(({ error }) => {
+      if (error) return setStructureError('Não foi possível corrigir a relação Pablo/Bruno.')
+      setOperationNotice('Relação corrigida: Pablo é gestor direto de Bruno.')
+      void refreshStructure()
+    })
+  }, [isRootAdmin, employees, relationships])
+
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!supabase) return
