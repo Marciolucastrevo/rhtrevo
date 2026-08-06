@@ -15,6 +15,13 @@ type Team = { id: string; name: string; company_id: string | null; unit_id: stri
 type Employee = { id: string; full_name: string; active: boolean }
 type Assignment = { id: string; employee_id: string; kind: 'employment' | 'functional' | 'technical' | 'process' | 'portfolio' | 'temporary'; company_id: string | null; unit_id: string | null; area_id: string | null; team_id: string | null; job_role_id: string | null; is_primary: boolean; starts_at: string; ends_at: string | null; source_employee_code: string | null }
 type Relationship = { id: string; subject_employee_id: string; related_employee_id: string; kind: string; starts_at: string; ends_at: string | null }
+type Profile = { id: string; full_name: string | null; email: string | null }
+type PermissionCatalogItem = { key: string; module: string; label: string; description: string | null; active: boolean }
+type PermissionGrant = { id: string; user_id: string; permission_key: string; effect: 'allow' | 'deny'; company_id: string | null; unit_id: string | null; area_id: string | null; team_id: string | null; employee_id: string | null; classification: string | null; starts_at: string; ends_at: string | null; reason: string }
+type AuthorizationScope = 'company' | 'unit' | 'area' | 'team' | 'person'
+
+const AUTHORIZATION_TODAY = new Date().toISOString().slice(0, 10)
+const AUTHORIZATION_NOW = new Date().toISOString()
 
 const foundations = [
   ['Estrutura organizacional', 'Empresas, unidades, áreas, equipes e cargos editáveis'],
@@ -40,6 +47,10 @@ function App() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [relationships, setRelationships] = useState<Relationship[]>([])
+  const [profiles, setProfiles] = useState<Profile[]>([])
+  const [permissionCatalog, setPermissionCatalog] = useState<PermissionCatalogItem[]>([])
+  const [permissionGrants, setPermissionGrants] = useState<PermissionGrant[]>([])
+  const [authorizationScope, setAuthorizationScope] = useState<AuthorizationScope | ''>('')
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('')
   const [personQuery, setPersonQuery] = useState('')
   const [structureError, setStructureError] = useState<string | null>(null)
@@ -71,7 +82,7 @@ function App() {
     if (!supabase || !isRootAdmin) return
     setStructureLoading(true)
     setStructureError(null)
-    const [companyResult, areaResult, unitResult, jobRoleResult, teamResult, employeeResult, assignmentResult, relationshipResult] = await Promise.all([
+    const [companyResult, areaResult, unitResult, jobRoleResult, teamResult, employeeResult, assignmentResult, relationshipResult, profileResult, permissionCatalogResult, permissionGrantResult] = await Promise.all([
       supabase.from('companies').select('id, name, legal_name, registration_number, active').order('name'),
       supabase.from('org_areas').select('id, name, code, active').order('name'),
       supabase.from('org_units').select('id, name, code, company_id, active').order('name'),
@@ -80,9 +91,12 @@ function App() {
       supabase.from('employees').select('id, full_name, active').order('full_name'),
       supabase.from('employee_assignments').select('id, employee_id, kind, company_id, unit_id, area_id, team_id, job_role_id, is_primary, starts_at, ends_at, source_employee_code').order('starts_at', { ascending: false }),
       supabase.from('employee_relationships').select('id, subject_employee_id, related_employee_id, kind, starts_at, ends_at').order('starts_at', { ascending: false }),
+      supabase.from('profiles').select('id, full_name, email').order('full_name'),
+      supabase.from('permission_catalog').select('key, module, label, description, active').order('module').order('label'),
+      supabase.from('user_permission_grants').select('id, user_id, permission_key, effect, company_id, unit_id, area_id, team_id, employee_id, classification, starts_at, ends_at, reason').lte('starts_at', AUTHORIZATION_NOW).or(`ends_at.is.null,ends_at.gt.${AUTHORIZATION_NOW}`).order('starts_at', { ascending: false }),
     ])
-    const error = companyResult.error ?? areaResult.error ?? unitResult.error ?? jobRoleResult.error ?? teamResult.error ?? employeeResult.error ?? assignmentResult.error ?? relationshipResult.error
-    if (error) setStructureError('Não foi possível carregar os cadastros organizacionais.')
+    const error = companyResult.error ?? areaResult.error ?? unitResult.error ?? jobRoleResult.error ?? teamResult.error ?? employeeResult.error ?? assignmentResult.error ?? relationshipResult.error ?? profileResult.error ?? permissionCatalogResult.error ?? permissionGrantResult.error
+    if (error) setStructureError('Não foi possível carregar os dados administrativos. Verifique seu acesso e tente novamente.')
     setCompanies((companyResult.data ?? []) as Company[])
     setAreas((areaResult.data ?? []) as Area[])
     setUnits((unitResult.data ?? []) as Unit[])
@@ -92,6 +106,9 @@ function App() {
     setEmployees(nextEmployees)
     setAssignments((assignmentResult.data ?? []) as Assignment[])
     setRelationships((relationshipResult.data ?? []) as Relationship[])
+    setProfiles((profileResult.data ?? []) as Profile[])
+    setPermissionCatalog((permissionCatalogResult.data ?? []) as PermissionCatalogItem[])
+    setPermissionGrants((permissionGrantResult.data ?? []) as PermissionGrant[])
     if (!selectedEmployeeId && nextEmployees.length > 0) setSelectedEmployeeId(nextEmployees[0].id)
     setStructureLoading(false)
   }
@@ -277,6 +294,41 @@ function App() {
     void refreshStructure()
   }
 
+  async function createPermissionGrant(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!supabase) return
+    const form = new FormData(event.currentTarget)
+    const scope = String(form.get('scope')) as AuthorizationScope | ''
+    const scopeId = String(form.get('scope_id'))
+    const scopeFields: Record<AuthorizationScope, string> = { company: 'company_id', unit: 'unit_id', area: 'area_id', team: 'team_id', person: 'employee_id' }
+    const grant: Record<string, string | null> = {
+      user_id: String(form.get('user_id')),
+      permission_key: String(form.get('permission_key')),
+      effect: String(form.get('effect')),
+      classification: String(form.get('classification')) || null,
+      starts_at: `${String(form.get('starts_at'))}T00:00:00.000Z`,
+      ends_at: String(form.get('ends_at')) ? `${String(form.get('ends_at'))}T23:59:59.999Z` : null,
+      reason: String(form.get('reason')).trim(),
+      granted_by: session?.user.id ?? null,
+    }
+    if (scope && scopeId) grant[scopeFields[scope]] = scopeId
+    const { error } = await supabase.from('user_permission_grants').insert(grant)
+    if (error) return setStructureError('Não foi possível registrar a concessão. Confira vigência, escopo e dados obrigatórios.')
+    event.currentTarget.reset()
+    setAuthorizationScope('')
+    setStructureError(null)
+    setOperationNotice('Concessão individual registrada com sucesso.')
+    void refreshStructure()
+  }
+
+  async function endPermissionGrant(grant: PermissionGrant) {
+    if (!supabase || !window.confirm('Encerrar esta concessão hoje? O histórico será preservado.')) return
+    const { error } = await supabase.from('user_permission_grants').update({ ends_at: `${AUTHORIZATION_TODAY}T23:59:59.999Z` }).eq('id', grant.id)
+    if (error) return setStructureError('Não foi possível encerrar a concessão.')
+    setOperationNotice('Concessão encerrada; o histórico foi preservado.')
+    void refreshStructure()
+  }
+
   if (!isSupabaseConfigured) return <main className="auth-shell"><section className="auth-card"><p className="eyebrow">RHTrevo</p><h1>Configuração pendente</h1><p>Informe a URL e a chave publicável do Supabase no ambiente local para iniciar.</p></section></main>
 
   if (!session) {
@@ -297,7 +349,7 @@ function App() {
     {isRootAdmin && activeModule === 'people' && <section className="people-section"><div className="section-heading"><div><p className="eyebrow">Pessoas e vínculos</p><h2>Perfil organizacional</h2><p>Defina a empresa de registro e as atuações adicionais de cada pessoa, com histórico preservado.</p></div></div><div className="people-layout"><aside className="people-list"><label>Localizar pessoa<input value={personQuery} onChange={(event) => setPersonQuery(event.target.value)} placeholder="Nome do colaborador" /></label><p>{visibleEmployees.length} pessoas encontradas</p><div>{visibleEmployees.map((employee) => <button className={employee.id === selectedEmployeeId ? 'person-selected' : ''} key={employee.id} type="button" onClick={() => setSelectedEmployeeId(employee.id)}>{employee.full_name}</button>)}</div></aside><article className="assignment-card">{selectedEmployee ? <><div className="person-title"><div><p className="eyebrow">Cadastro selecionado</p><h3>{selectedEmployee.full_name}</h3></div><span className={selectedEmployee.active ? 'record-active' : 'record-inactive'}>{selectedEmployee.active ? 'Ativo' : 'Inativo'}</span></div><h4>Vínculos atuais e históricos</h4><div className="assignment-list">{selectedAssignments.length === 0 && <p className="empty-state">Nenhum vínculo registrado.</p>}{selectedAssignments.map((assignment) => <div className="assignment-row" key={assignment.id}><div><strong>{companies.find((company) => company.id === assignment.company_id)?.name ?? 'Sem empresa'}</strong><small>{jobRoles.find((role) => role.id === assignment.job_role_id)?.name ?? 'Sem função'} · {areas.find((area) => area.id === assignment.area_id)?.name ?? 'Sem área'} · {assignment.kind}</small><small>{assignment.starts_at}{assignment.ends_at ? ` até ${assignment.ends_at}` : ' · vigente'}{assignment.source_employee_code ? ` · matrícula ERP ${assignment.source_employee_code}` : ''}</small></div><div className="record-actions">{assignment.is_primary ? <span className="record-active">Registro principal</span> : !assignment.ends_at && <button type="button" onClick={() => void setPrimaryAssignment(assignment)}>Definir principal</button>}{!assignment.ends_at && <button type="button" onClick={() => void endAssignment(assignment)}>Encerrar</button>}</div></div>)}</div><h4>Novo vínculo</h4><form className="assignment-form" onSubmit={createAssignment}><select name="kind" defaultValue="functional"><option value="employment">Registro empregatício</option><option value="functional">Atuação funcional</option><option value="technical">Responsabilidade técnica</option><option value="process">Responsável por processo</option><option value="portfolio">Carteira</option><option value="temporary">Atuação temporária</option></select><select name="company_id" required defaultValue=""><option value="" disabled>Empresa</option>{companies.filter((company) => company.active).map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}</select><select name="unit_id" defaultValue=""><option value="">Unidade (opcional)</option>{units.filter((unit) => unit.active).map((unit) => <option key={unit.id} value={unit.id}>{companies.find((company) => company.id === unit.company_id)?.name} — {unit.name}</option>)}</select><select name="area_id" defaultValue=""><option value="">Área (opcional)</option>{areas.filter((area) => area.active).map((area) => <option key={area.id} value={area.id}>{area.name}</option>)}</select><select name="job_role_id" defaultValue=""><option value="">Função/cargo (opcional)</option>{jobRoles.filter((role) => role.active).map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select><label>Início<input name="starts_at" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required /></label><label className="checkbox-label"><input name="is_primary" type="checkbox" /> Empresa de registro principal</label><textarea name="notes" placeholder="Observação (opcional)" /><button type="submit">Adicionar vínculo</button></form><h4>Relações organizacionais vigentes</h4><form className="assignment-form" onSubmit={createRelationship}><select name="direction" defaultValue="selected_is_responsible"><option value="selected_is_responsible">A pessoa selecionada é responsável por</option><option value="selected_reports_to">A pessoa selecionada responde a</option></select><select name="kind" defaultValue="direct_manager"><option value="direct_manager">Gestor direto</option><option value="secondary_manager">Gestor secundário</option><option value="functional_owner">Responsável funcional</option><option value="technical_owner">Responsável técnico</option><option value="approver">Aprovador</option><option value="mentor">Mentor</option><option value="delegate">Delegado</option></select><select name="related_employee_id" required defaultValue=""><option value="" disabled>Selecione a outra pessoa</option>{employees.filter((employee) => employee.id !== selectedEmployeeId && employee.active).map((employee) => <option key={employee.id} value={employee.id}>{employee.full_name}</option>)}</select><label>Início<input name="starts_at" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required /></label><button type="submit">Adicionar relação</button></form><div className="assignment-list">{relationships.filter((relationship) => (relationship.subject_employee_id === selectedEmployeeId || relationship.related_employee_id === selectedEmployeeId) && !relationship.ends_at).map((relationship) => { const selectedIsResponsible = relationship.related_employee_id === selectedEmployeeId; const otherId = selectedIsResponsible ? relationship.subject_employee_id : relationship.related_employee_id; return <div className="assignment-row" key={relationship.id}><div><strong>{employees.find((employee) => employee.id === otherId)?.full_name ?? 'Pessoa não encontrada'}</strong><small>{selectedIsResponsible ? 'É responsável por' : 'Responde a'} · {relationship.kind} · vigente desde {relationship.starts_at}</small></div><div className="record-actions"><button type="button" onClick={() => void reverseRelationship(relationship)}>Inverter direção</button><button type="button" onClick={() => void endRelationship(relationship)}>Encerrar relação</button></div></div>})}</div>{relationships.some((relationship) => (relationship.subject_employee_id === selectedEmployeeId || relationship.related_employee_id === selectedEmployeeId) && relationship.ends_at) && <><h4 className="history-heading">Histórico de relações encerradas</h4><div className="assignment-list relationship-history">{relationships.filter((relationship) => (relationship.subject_employee_id === selectedEmployeeId || relationship.related_employee_id === selectedEmployeeId) && relationship.ends_at).map((relationship) => { const selectedIsResponsible = relationship.related_employee_id === selectedEmployeeId; const otherId = selectedIsResponsible ? relationship.subject_employee_id : relationship.related_employee_id; return <div className="assignment-row" key={relationship.id}><div><strong>{employees.find((employee) => employee.id === otherId)?.full_name ?? 'Pessoa não encontrada'}</strong><small>{selectedIsResponsible ? 'Foi responsável por' : 'Respondeu a'} · {relationship.kind} · encerrada em {relationship.ends_at}</small></div></div>})}</div></>}</> : <p className="empty-state">Selecione uma pessoa para administrar seus vínculos.</p>}</article></div></section>}
     {activeModule === 'home' && <section className="foundation-grid" aria-label="Fundamentos da primeira entrega">{foundations.map(([title, description], index) => <article className="foundation-card" key={title}><span className="card-index">0{index + 1}</span><h3>{title}</h3><p>{description}</p></article>)}</section>}
     {isRootAdmin && activeModule === 'organogram' && <Organogram companies={companies} units={units} areas={areas} teams={teams} employees={employees} assignments={assignments} relationships={relationships} jobRoles={jobRoles} />}
-    {isRootAdmin && activeModule === 'authorizations' && <ModuleComingSoon title="Autorizações" description="Permissões explícitas por usuário, ação, escopo, classificação de dado e vigência." />}
+    {isRootAdmin && activeModule === 'authorizations' && <AuthorizationsModule profiles={profiles} permissions={permissionCatalog} grants={permissionGrants} companies={companies} units={units} areas={areas} teams={teams} employees={employees} scope={authorizationScope} onScopeChange={setAuthorizationScope} onSubmit={createPermissionGrant} onEnd={(grant) => void endPermissionGrant(grant)} onRefresh={() => void refreshStructure()} loading={structureLoading} />}
     {isRootAdmin && activeModule === 'audit' && <ModuleComingSoon title="Auditoria" description="Histórico administrativo e linha do tempo das alterações da plataforma." />}
   </main>
 }
@@ -356,6 +408,21 @@ function Person360({ person, assignments, relationships, employees, companies, u
   }
   const origin = assignments.filter((assignment) => assignment.kind === 'employment').length ? <div className="person360-list">{assignments.filter((assignment) => assignment.kind === 'employment').map((assignment) => <div key={assignment.id}><strong>Vínculo empregatício</strong><small>Admissão {assignment.starts_at}{assignment.source_employee_code ? ` · matrícula ${assignment.source_employee_code}` : ''}</small></div>)}</div> : empty
   return <section className="person360-shell"><div className="person360-legend"><span className="legend-link">Gestão</span><span className="legend-work">Vínculos e locais</span><span className="legend-role">Cargos</span><span className="legend-responsibility">Responsabilidades</span></div><div className="person360">{card('Vínculos e locais', 'companies', locations)}{card('Gestão', 'managers', managers)}{card('Cargos e atuações', 'roles', roles)}{card('Responsabilidades', 'responsibilities', responsibilities)}<article className="person360-center"><div className="person360-avatar">{person.full_name.split(' ').slice(0, 2).map((part) => part[0]).join('')}</div><h3>{person.full_name}</h3><p>{jobRoles.find((role) => role.id === primary?.job_role_id)?.name ?? 'Cargo não definido'}</p><small>{companies.find((company) => company.id === primary?.company_id)?.name ?? 'Empresa não definida'}</small>{primary?.source_employee_code && <span>Matrícula ERP {primary.source_employee_code}</span>}</article>{card('Pessoas sob gestão', 'subordinates', subordinates)}{card('Registro de origem', 'contracts', origin)}</div></section>
+}
+
+function AuthorizationsModule({ profiles, permissions, grants, companies, units, areas, teams, employees, scope, onScopeChange, onSubmit, onEnd, onRefresh, loading }: { profiles: Profile[]; permissions: PermissionCatalogItem[]; grants: PermissionGrant[]; companies: Company[]; units: Unit[]; areas: Area[]; teams: Team[]; employees: Employee[]; scope: AuthorizationScope | ''; onScopeChange: (scope: AuthorizationScope | '') => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void; onEnd: (grant: PermissionGrant) => void; onRefresh: () => void; loading: boolean }) {
+  const permissionsByModule = permissions.filter((permission) => permission.active).reduce<Record<string, PermissionCatalogItem[]>>((grouped, permission) => { (grouped[permission.module] ??= []).push(permission); return grouped }, {})
+  const scopeOptions = scope === 'company' ? companies.filter((item) => item.active) : scope === 'unit' ? units.filter((item) => item.active) : scope === 'area' ? areas.filter((item) => item.active) : scope === 'team' ? teams.filter((item) => item.active) : employees.filter((item) => item.active)
+  const scopeLabel = (grant: PermissionGrant) => {
+    if (grant.company_id) return `Empresa: ${companies.find((item) => item.id === grant.company_id)?.name ?? 'não encontrada'}`
+    if (grant.unit_id) return `Unidade: ${units.find((item) => item.id === grant.unit_id)?.name ?? 'não encontrada'}`
+    if (grant.area_id) return `Área: ${areas.find((item) => item.id === grant.area_id)?.name ?? 'não encontrada'}`
+    if (grant.team_id) return `Equipe: ${teams.find((item) => item.id === grant.team_id)?.name ?? 'não encontrada'}`
+    if (grant.employee_id) return `Pessoa: ${employees.find((item) => item.id === grant.employee_id)?.full_name ?? 'não encontrada'}`
+    return 'Toda a empresa'
+  }
+  const formatDate = (value: string) => new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeZone: 'America/New_York' }).format(new Date(value))
+  return <section className="authorizations-section"><div className="section-heading"><div><p className="eyebrow">Controle de acesso</p><h2>Autorizações individuais</h2><p>Concessões explícitas, com escopo, classificação e vigência. A RLS do banco permanece como camada de proteção.</p></div><button className="outline-button" type="button" onClick={onRefresh} disabled={loading}>{loading ? 'Atualizando…' : 'Atualizar'}</button></div><div className="authorizations-layout"><div className="authorizations-main"><article className="authorization-card"><div className="authorization-card-heading"><div><h3>Concessões vigentes</h3><p>{grants.length} concess{grants.length === 1 ? 'ão' : 'ões'} ativa{grants.length === 1 ? '' : 's'}</p></div></div><div className="grant-list">{grants.length === 0 && <p className="empty-state">Nenhuma concessão individual vigente.</p>}{grants.map((grant) => <div className="grant-row" key={grant.id}><div><div className="grant-title"><strong>{profiles.find((profile) => profile.id === grant.user_id)?.full_name ?? profiles.find((profile) => profile.id === grant.user_id)?.email ?? 'Usuário não encontrado'}</strong><span className={grant.effect === 'allow' ? 'effect-allow' : 'effect-deny'}>{grant.effect === 'allow' ? 'Allow' : 'Deny'}</span></div><small>{permissions.find((permission) => permission.key === grant.permission_key)?.label ?? grant.permission_key}</small><small>{scopeLabel(grant)} · {grant.classification ?? 'Sem classificação'}</small><small>De {formatDate(grant.starts_at)}{grant.ends_at ? ` até ${formatDate(grant.ends_at)}` : ' · sem término'}</small><p>{grant.reason}</p></div><button className="grant-end-button" type="button" onClick={() => onEnd(grant)}>Encerrar</button></div>)}</div></article><article className="authorization-card permission-catalog"><h3>Catálogo de permissões</h3><p>Permissões ativas agrupadas por módulo.</p><div>{Object.entries(permissionsByModule).map(([module, items]) => <section className="permission-module" key={module}><h4>{module}</h4>{items.map((permission) => <div key={permission.key}><strong>{permission.label}</strong><small>{permission.description ?? permission.key}</small></div>)}</section>)}</div></article></div><article className="authorization-card grant-form-card"><h3>Nova concessão</h3><p>Somente administradores raiz podem registrar autorizações individuais.</p><form className="grant-form" onSubmit={onSubmit}><label>Usuário<select name="user_id" required defaultValue=""><option value="" disabled>Selecione o usuário</option>{profiles.map((profile) => <option value={profile.id} key={profile.id}>{profile.full_name ?? profile.email ?? profile.id}{profile.email && profile.full_name ? ` — ${profile.email}` : ''}</option>)}</select></label><label>Permissão<select name="permission_key" required defaultValue=""><option value="" disabled>Selecione a permissão</option>{Object.entries(permissionsByModule).map(([module, items]) => <optgroup label={module} key={module}>{items.map((permission) => <option value={permission.key} key={permission.key}>{permission.label}</option>)}</optgroup>)}</select></label><label>Efeito<select name="effect" defaultValue="allow"><option value="allow">Allow — conceder</option><option value="deny">Deny — negar</option></select></label><label>Classificação de dado<select name="classification" defaultValue=""><option value="">Não especificada</option><option value="operational">Operacional</option><option value="personal">Pessoal</option><option value="financial">Financeira</option><option value="medical">Médica</option><option value="disciplinary">Disciplinar</option><option value="performance">Desempenho</option><option value="document">Documento</option></select></label><label>Escopo (opcional)<select name="scope" value={scope} onChange={(event) => onScopeChange(event.target.value as AuthorizationScope | '')}><option value="">Toda a empresa</option><option value="company">Empresa</option><option value="unit">Unidade</option><option value="area">Área</option><option value="team">Equipe</option><option value="person">Pessoa</option></select></label>{scope && <label>Alvo do escopo<select key={scope} name="scope_id" required defaultValue=""><option value="" disabled>Selecione {scope === 'person' ? 'a pessoa' : 'o escopo'}</option>{scopeOptions.map((item) => <option value={item.id} key={item.id}>{'full_name' in item ? item.full_name : item.name}</option>)}</select></label>}<label>Início<input name="starts_at" type="date" defaultValue={AUTHORIZATION_TODAY} required /></label><label>Fim (opcional)<input name="ends_at" type="date" min={AUTHORIZATION_TODAY} /></label><label className="grant-reason">Motivo<textarea name="reason" placeholder="Justificativa da concessão" required /></label><button type="submit">Registrar concessão</button></form></article></div></section>
 }
 
 function ModuleComingSoon({ title, description }: { title: string; description: string }) {
