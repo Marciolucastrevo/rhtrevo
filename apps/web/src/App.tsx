@@ -21,6 +21,7 @@ type Profile = { id: string; full_name: string | null; email: string | null }
 type PermissionCatalogItem = { key: string; module: string; label: string; description: string | null; active: boolean }
 type PermissionGrant = { id: string; user_id: string; permission_key: string; effect: 'allow' | 'deny'; company_id: string | null; unit_id: string | null; area_id: string | null; team_id: string | null; employee_id: string | null; classification: string | null; starts_at: string; ends_at: string | null; reason: string }
 type AuthorizationScope = 'company' | 'unit' | 'area' | 'team' | 'person'
+type AuditLog = { id: string; actor_user_id: string | null; origin: string; entity_type: string; entity_id: string; action: string; old_values: unknown | null; new_values: unknown | null; request_summary: string | null; created_at: string }
 
 const AUTHORIZATION_TODAY = new Date().toISOString().slice(0, 10)
 const AUTHORIZATION_NOW = new Date().toISOString()
@@ -54,6 +55,7 @@ function App() {
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [permissionCatalog, setPermissionCatalog] = useState<PermissionCatalogItem[]>([])
   const [permissionGrants, setPermissionGrants] = useState<PermissionGrant[]>([])
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [authorizationScope, setAuthorizationScope] = useState<AuthorizationScope | ''>('')
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('')
   const [personQuery, setPersonQuery] = useState('')
@@ -86,7 +88,7 @@ function App() {
     if (!supabase || !isRootAdmin) return
     setStructureLoading(true)
     setStructureError(null)
-    const [companyResult, areaResult, unitResult, jobRoleResult, teamResult, employeeResult, assignmentResult, relationshipResult, responsibilityCatalogResult, assignmentResponsibilityResult, profileResult, permissionCatalogResult, permissionGrantResult] = await Promise.all([
+    const [companyResult, areaResult, unitResult, jobRoleResult, teamResult, employeeResult, assignmentResult, relationshipResult, responsibilityCatalogResult, assignmentResponsibilityResult, profileResult, permissionCatalogResult, permissionGrantResult, auditLogResult] = await Promise.all([
       supabase.from('companies').select('id, name, legal_name, registration_number, active').order('name'),
       supabase.from('org_areas').select('id, name, code, active').order('name'),
       supabase.from('org_units').select('id, name, code, company_id, active').order('name'),
@@ -100,8 +102,9 @@ function App() {
       supabase.from('profiles').select('id, full_name, email').order('full_name'),
       supabase.from('permission_catalog').select('key, module, label, description, active').order('module').order('label'),
       supabase.from('user_permission_grants').select('id, user_id, permission_key, effect, company_id, unit_id, area_id, team_id, employee_id, classification, starts_at, ends_at, reason').lte('starts_at', AUTHORIZATION_NOW).or(`ends_at.is.null,ends_at.gt.${AUTHORIZATION_NOW}`).order('starts_at', { ascending: false }),
+      supabase.from('audit_logs').select('id, actor_user_id, origin, entity_type, entity_id, action, old_values, new_values, request_summary, created_at').order('created_at', { ascending: false }).range(0, 99),
     ])
-    const error = companyResult.error ?? areaResult.error ?? unitResult.error ?? jobRoleResult.error ?? teamResult.error ?? employeeResult.error ?? assignmentResult.error ?? relationshipResult.error ?? responsibilityCatalogResult.error ?? assignmentResponsibilityResult.error ?? profileResult.error ?? permissionCatalogResult.error ?? permissionGrantResult.error
+    const error = companyResult.error ?? areaResult.error ?? unitResult.error ?? jobRoleResult.error ?? teamResult.error ?? employeeResult.error ?? assignmentResult.error ?? relationshipResult.error ?? responsibilityCatalogResult.error ?? assignmentResponsibilityResult.error ?? profileResult.error ?? permissionCatalogResult.error ?? permissionGrantResult.error ?? auditLogResult.error
     if (error) setStructureError('Não foi possível carregar os dados administrativos. Verifique seu acesso e tente novamente.')
     setCompanies((companyResult.data ?? []) as Company[])
     setAreas((areaResult.data ?? []) as Area[])
@@ -117,6 +120,7 @@ function App() {
     setProfiles((profileResult.data ?? []) as Profile[])
     setPermissionCatalog((permissionCatalogResult.data ?? []) as PermissionCatalogItem[])
     setPermissionGrants((permissionGrantResult.data ?? []) as PermissionGrant[])
+    setAuditLogs((auditLogResult.data ?? []) as AuditLog[])
     if (!selectedEmployeeId && nextEmployees.length > 0) setSelectedEmployeeId(nextEmployees[0].id)
     setStructureLoading(false)
   }
@@ -417,7 +421,7 @@ function App() {
     {isRootAdmin && activeModule === 'responsibilities' && <ResponsibilitiesModule catalog={responsibilityCatalog} assignmentResponsibilities={assignmentResponsibilities} assignments={assignments} employees={employees} companies={companies} units={units} areas={areas} jobRoles={jobRoles} onCreate={createResponsibility} onEdit={(item) => void editResponsibility(item)} onToggle={(item) => void toggleResponsibility(item)} onAssign={createAssignmentResponsibility} onEnd={(item) => void endAssignmentResponsibility(item)} onRefresh={() => void refreshStructure()} loading={structureLoading} />}
     {isRootAdmin && activeModule === 'organogram' && <Organogram companies={companies} units={units} areas={areas} teams={teams} employees={employees} assignments={assignments} relationships={relationships} jobRoles={jobRoles} responsibilityCatalog={responsibilityCatalog} assignmentResponsibilities={assignmentResponsibilities} />}
     {isRootAdmin && activeModule === 'authorizations' && <AuthorizationsModule profiles={profiles} permissions={permissionCatalog} grants={permissionGrants} companies={companies} units={units} areas={areas} teams={teams} employees={employees} scope={authorizationScope} onScopeChange={setAuthorizationScope} onSubmit={createPermissionGrant} onEnd={(grant) => void endPermissionGrant(grant)} onRefresh={() => void refreshStructure()} loading={structureLoading} />}
-    {isRootAdmin && activeModule === 'audit' && <ModuleComingSoon title="Auditoria" description="Histórico administrativo e linha do tempo das alterações da plataforma." />}
+    {isRootAdmin && activeModule === 'audit' && <AuditModule logs={auditLogs} profiles={profiles} onRefresh={() => void refreshStructure()} loading={structureLoading} />}
   </main>
 }
 
@@ -505,8 +509,33 @@ function AuthorizationsModule({ profiles, permissions, grants, companies, units,
   return <section className="authorizations-section"><div className="section-heading"><div><p className="eyebrow">Controle de acesso</p><h2>Autorizações individuais</h2><p>Concessões explícitas, com escopo, classificação e vigência. A RLS do banco permanece como camada de proteção.</p></div><button className="outline-button" type="button" onClick={onRefresh} disabled={loading}>{loading ? 'Atualizando…' : 'Atualizar'}</button></div><div className="authorizations-layout"><div className="authorizations-main"><article className="authorization-card"><div className="authorization-card-heading"><div><h3>Concessões vigentes</h3><p>{grants.length} concess{grants.length === 1 ? 'ão' : 'ões'} ativa{grants.length === 1 ? '' : 's'}</p></div></div><div className="grant-list">{grants.length === 0 && <p className="empty-state">Nenhuma concessão individual vigente.</p>}{grants.map((grant) => <div className="grant-row" key={grant.id}><div><div className="grant-title"><strong>{profiles.find((profile) => profile.id === grant.user_id)?.full_name ?? profiles.find((profile) => profile.id === grant.user_id)?.email ?? 'Usuário não encontrado'}</strong><span className={grant.effect === 'allow' ? 'effect-allow' : 'effect-deny'}>{grant.effect === 'allow' ? 'Allow' : 'Deny'}</span></div><small>{permissions.find((permission) => permission.key === grant.permission_key)?.label ?? grant.permission_key}</small><small>{scopeLabel(grant)} · {grant.classification ?? 'Sem classificação'}</small><small>De {formatDate(grant.starts_at)}{grant.ends_at ? ` até ${formatDate(grant.ends_at)}` : ' · sem término'}</small><p>{grant.reason}</p></div><button className="grant-end-button" type="button" onClick={() => onEnd(grant)}>Encerrar</button></div>)}</div></article><article className="authorization-card permission-catalog"><h3>Catálogo de permissões</h3><p>Permissões ativas agrupadas por módulo.</p><div>{Object.entries(permissionsByModule).map(([module, items]) => <section className="permission-module" key={module}><h4>{module}</h4>{items.map((permission) => <div key={permission.key}><strong>{permission.label}</strong><small>{permission.description ?? permission.key}</small></div>)}</section>)}</div></article></div><article className="authorization-card grant-form-card"><h3>Nova concessão</h3><p>Somente administradores raiz podem registrar autorizações individuais.</p><form className="grant-form" onSubmit={onSubmit}><label>Usuário<select name="user_id" required defaultValue=""><option value="" disabled>Selecione o usuário</option>{profiles.map((profile) => <option value={profile.id} key={profile.id}>{profile.full_name ?? profile.email ?? profile.id}{profile.email && profile.full_name ? ` — ${profile.email}` : ''}</option>)}</select></label><label>Permissão<select name="permission_key" required defaultValue=""><option value="" disabled>Selecione a permissão</option>{Object.entries(permissionsByModule).map(([module, items]) => <optgroup label={module} key={module}>{items.map((permission) => <option value={permission.key} key={permission.key}>{permission.label}</option>)}</optgroup>)}</select></label><label>Efeito<select name="effect" defaultValue="allow"><option value="allow">Allow — conceder</option><option value="deny">Deny — negar</option></select></label><label>Classificação de dado<select name="classification" defaultValue=""><option value="">Não especificada</option><option value="operational">Operacional</option><option value="personal">Pessoal</option><option value="financial">Financeira</option><option value="medical">Médica</option><option value="disciplinary">Disciplinar</option><option value="performance">Desempenho</option><option value="document">Documento</option></select></label><label>Escopo (opcional)<select name="scope" value={scope} onChange={(event) => onScopeChange(event.target.value as AuthorizationScope | '')}><option value="">Toda a empresa</option><option value="company">Empresa</option><option value="unit">Unidade</option><option value="area">Área</option><option value="team">Equipe</option><option value="person">Pessoa</option></select></label>{scope && <label>Alvo do escopo<select key={scope} name="scope_id" required defaultValue=""><option value="" disabled>Selecione {scope === 'person' ? 'a pessoa' : 'o escopo'}</option>{scopeOptions.map((item) => <option value={item.id} key={item.id}>{'full_name' in item ? item.full_name : item.name}</option>)}</select></label>}<label>Início<input name="starts_at" type="date" defaultValue={AUTHORIZATION_TODAY} required /></label><label>Fim (opcional)<input name="ends_at" type="date" min={AUTHORIZATION_TODAY} /></label><label className="grant-reason">Motivo<textarea name="reason" placeholder="Justificativa da concessão" required /></label><button type="submit">Registrar concessão</button></form></article></div></section>
 }
 
-function ModuleComingSoon({ title, description }: { title: string; description: string }) {
-  return <section className="module-placeholder"><p className="eyebrow">Módulo em construção</p><h2>{title}</h2><p>{description}</p><span>Base de dados e regras transversais em preparação.</span></section>
+function AuditModule({ logs, profiles, onRefresh, loading }: { logs: AuditLog[]; profiles: Profile[]; onRefresh: () => void; loading: boolean }) {
+  const [entityFilter, setEntityFilter] = useState('')
+  const [actionFilter, setActionFilter] = useState('')
+  const [originFilter, setOriginFilter] = useState('')
+  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null)
+  const entities = [...new Set(logs.map((log) => log.entity_type))].sort()
+  const actions = [...new Set(logs.map((log) => log.action))].sort()
+  const origins = [...new Set(logs.map((log) => log.origin))].sort()
+  const filteredLogs = logs.filter((log) => (!entityFilter || log.entity_type === entityFilter) && (!actionFilter || log.action === actionFilter) && (!originFilter || log.origin === originFilter))
+  const actorLabel = (actorId: string | null) => {
+    if (!actorId) return 'Sistema'
+    const profile = profiles.find((item) => item.id === actorId)
+    return profile?.full_name ?? profile?.email ?? 'Usuário não identificado'
+  }
+  const formatDateTime = (value: string) => new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'medium' }).format(new Date(value))
+  const formatAction = (action: string) => ({ insert: 'Criação', update: 'Atualização', delete: 'Exclusão' }[action] ?? action)
+  return <section className="audit-section"><div className="section-heading"><div><p className="eyebrow">Auditoria administrativa</p><h2>Histórico de alterações</h2><p>Exibe até os 100 registros mais recentes disponíveis para administradores raiz, respeitando a RLS.</p></div><button className="outline-button" type="button" onClick={onRefresh} disabled={loading}>{loading ? 'Atualizando…' : 'Atualizar'}</button></div><div className="audit-filters" aria-label="Filtros da auditoria"><label>Entidade<select value={entityFilter} onChange={(event) => setEntityFilter(event.target.value)}><option value="">Todas as entidades</option>{entities.map((entity) => <option value={entity} key={entity}>{entity}</option>)}</select></label><label>Ação<select value={actionFilter} onChange={(event) => setActionFilter(event.target.value)}><option value="">Todas as ações</option>{actions.map((action) => <option value={action} key={action}>{formatAction(action)}</option>)}</select></label><label>Origem<select value={originFilter} onChange={(event) => setOriginFilter(event.target.value)}><option value="">Todas as origens</option>{origins.map((origin) => <option value={origin} key={origin}>{origin}</option>)}</select></label></div><p className="audit-count">{filteredLogs.length} de {logs.length} registros carregados</p><div className="audit-timeline">{filteredLogs.length === 0 && <div className="audit-empty"><strong>Nenhum registro encontrado</strong><p>{logs.length === 0 ? 'Ainda não há eventos de auditoria disponíveis.' : 'Ajuste ou limpe os filtros para ver outros registros.'}</p></div>}{filteredLogs.map((log) => <article className="audit-log-row" key={log.id}><div className="audit-log-time"><strong>{formatDateTime(log.created_at)}</strong><span>{log.origin}</span></div><div className="audit-log-content"><div className="audit-log-title"><strong>{formatAction(log.action)}</strong><span className={`audit-action audit-action-${log.action}`}>{log.action}</span><span>{log.entity_type}</span></div><p>{log.request_summary?.trim() || `Alteração em ${log.entity_type}.`}</p><small>Ator: {actorLabel(log.actor_user_id)} · Entidade: {log.entity_id}</small></div><button className="audit-details-button" type="button" onClick={() => setSelectedLog(log)}>Detalhes</button></article>)}</div>{selectedLog && <div className="audit-details-backdrop" role="presentation" onMouseDown={() => setSelectedLog(null)}><section className="audit-details" role="dialog" aria-modal="true" aria-labelledby="audit-details-title" onMouseDown={(event) => event.stopPropagation()}><div className="audit-details-heading"><div><p className="eyebrow">Registro de auditoria</p><h3 id="audit-details-title">{formatAction(selectedLog.action)} em {selectedLog.entity_type}</h3></div><button type="button" className="text-button" onClick={() => setSelectedLog(null)}>Fechar</button></div><dl className="audit-meta"><div><dt>Data e hora</dt><dd>{formatDateTime(selectedLog.created_at)}</dd></div><div><dt>Ator</dt><dd>{actorLabel(selectedLog.actor_user_id)}</dd></div><div><dt>Origem</dt><dd>{selectedLog.origin}</dd></div><div><dt>Entidade</dt><dd>{selectedLog.entity_type} · {selectedLog.entity_id}</dd></div></dl><p className="audit-summary">{selectedLog.request_summary?.trim() || 'Sem resumo fornecido.'}</p><div className="audit-json-grid"><AuditJson title="Valores anteriores" value={selectedLog.old_values} /><AuditJson title="Valores novos" value={selectedLog.new_values} /></div></section></div>}</section>
+}
+
+function AuditJson({ title, value }: { title: string; value: unknown | null }) {
+  const redact = (input: unknown): unknown => {
+    if (Array.isArray(input)) return input.map(redact)
+    if (input && typeof input === 'object') return Object.fromEntries(Object.entries(input as Record<string, unknown>).map(([key, child]) => [key, /password|secret|token|api[_-]?key|authorization|credential|service[_-]?role/i.test(key) ? '[REDACTED]' : redact(child)]))
+    return input
+  }
+  const rendered = value == null ? 'Sem valores registrados.' : JSON.stringify(redact(value), null, 2)
+  return <section className="audit-json"><h4>{title}</h4><pre>{rendered}</pre></section>
 }
 
 function RecordList({ records, onRename, onToggle }: { records: Array<{ id: string; name: string; active: boolean; detail?: string }>; onRename: (record: { id: string; name: string; active: boolean }) => void; onToggle: (record: { id: string; name: string; active: boolean }) => void }) {

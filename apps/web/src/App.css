@@ -329,3 +329,28 @@ h1 {
 .responsibility-form-card { position: sticky; top: 1rem; }
 @media (max-width: 850px) { .responsibilities-layout { grid-template-columns: 1fr; } .responsibility-form-card { position: static; } }
 @media (max-width: 560px) { .responsibility-catalog-row, .responsibility-assignment-row { flex-direction: column; } }
+
+.audit-section { margin: 3rem 0; }
+.audit-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; padding: 1rem; border: 1px solid #dbe4de; border-radius: .8rem; background: #f8fbf8; }
+.audit-filters label { display: grid; gap: .35rem; color: #254837; font-size: .82rem; font-weight: 800; }
+.audit-filters select { width: 100%; border: 1px solid #b9c9bf; border-radius: .5rem; background: #fff; padding: .7rem; color: #17382c; font: inherit; }
+.audit-count { margin: 1rem 0 .7rem; color: #68766f; font-size: .86rem; }
+.audit-timeline { display: grid; gap: .7rem; }
+.audit-log-row { display: grid; grid-template-columns: 180px minmax(0, 1fr) auto; gap: 1rem; align-items: start; border: 1px solid #e0e9e3; border-radius: .75rem; background: #fff; padding: 1rem; }
+.audit-log-time { display: grid; gap: .35rem; color: #355848; font-size: .82rem; }
+.audit-log-time span, .audit-action { width: max-content; border-radius: 999px; background: #edf5ee; padding: .2rem .5rem; color: #31543c; font-size: .72rem; font-weight: 800; text-transform: uppercase; }
+.audit-log-content { min-width: 0; }
+.audit-log-title { display: flex; align-items: center; flex-wrap: wrap; gap: .45rem; color: #17382c; }
+.audit-log-title > span:last-child { color: #5d6d64; font-size: .83rem; font-weight: 700; }
+.audit-action-delete { background: #fbe8e8; color: #9b3131; }.audit-action-insert { background: #ddf6e7; color: #14603b; }.audit-action-update { background: #e8efff; color: #355db5; }
+.audit-log-content p { margin: .45rem 0; color: #4c5b53; line-height: 1.45; }
+.audit-log-content small { color: #68766f; font-size: .78rem; overflow-wrap: anywhere; }
+.audit-details-button { align-self: center; border: 1px solid #6d9780; border-radius: .45rem; background: #fff; padding: .48rem .65rem; color: #275b43; cursor: pointer; font: inherit; font-size: .8rem; font-weight: 800; }
+.audit-empty { border: 1px dashed #b9c9bf; border-radius: .75rem; padding: 2rem; color: #4c5b53; text-align: center; }.audit-empty p { margin: .45rem 0 0; }
+.audit-details-backdrop { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 1rem; background: rgba(18,49,38,.42); }
+.audit-details { box-sizing: border-box; width: min(920px, 100%); max-height: min(760px, calc(100vh - 2rem)); overflow: auto; border-radius: 1rem; background: #fff; padding: 1.25rem; box-shadow: 0 18px 50px rgba(18,49,38,.3); }
+.audit-details-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }.audit-details-heading h3 { margin-bottom: 0; color: #17382c; }
+.audit-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; margin: 1.25rem 0; }.audit-meta div { border: 1px solid #e4ece6; border-radius: .55rem; padding: .7rem; }.audit-meta dt { color: #68766f; font-size: .75rem; font-weight: 800; text-transform: uppercase; }.audit-meta dd { margin: .25rem 0 0; color: #17382c; font-size: .86rem; overflow-wrap: anywhere; }
+.audit-summary { margin: 0 0 1rem; color: #4c5b53; }.audit-json-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }.audit-json { min-width: 0; }.audit-json h4 { margin: 0 0 .5rem; color: #254837; }.audit-json pre { min-height: 120px; max-height: 340px; overflow: auto; margin: 0; border-radius: .6rem; background: #17382c; padding: .85rem; color: #e5f4e9; font-size: .76rem; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 850px) { .audit-filters, .audit-meta, .audit-json-grid { grid-template-columns: 1fr; }.audit-log-row { grid-template-columns: 1fr auto; }.audit-log-time { grid-column: 1 / -1; grid-template-columns: 1fr auto; align-items: center; }.audit-log-time span { justify-self: end; } }
+@media (max-width: 560px) { .audit-log-row { grid-template-columns: 1fr; }.audit-details-button { justify-self: start; } }
