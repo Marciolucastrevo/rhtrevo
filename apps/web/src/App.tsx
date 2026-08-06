@@ -194,6 +194,8 @@ function App() {
       ['subordinado_matricula_erp', 'codigo_colaborador', 'matricula_colaborador', 'subject_employee_code', 'codigo_subordinado'],
       ['gestor_matricula_erp', 'codigo_responsavel', 'matricula_responsavel', 'related_employee_code', 'codigo_gestor', 'codigo_gestor_responsavel'],
       ['data_inicio', 'inicio', 'starts_at'],
+      // gestor_empresa_codigo é recomendado; se vier vazio, usa a empresa do subordinado para relações internas.
+      ['gestor_empresa_codigo', 'empresa_gestor_codigo', 'responsavel_empresa_codigo', 'related_company_code'], 
     ]
     if (expected.some((aliases) => !headers.some((header) => aliases.includes(header)))) return [{ line: 1, operation: '', relationType: '', companyCode: '', subjectCode: '', relatedCode: '', startsAt: '', status: 'blocked' as const, message: 'Cabeçalho inválido. Use o modelo: operacao;subordinado_matricula_erp;subordinado_nome;subordinado_empresa_codigo;gestor_matricula_erp;gestor_nome;tipo_relacao;inicio.' }]
     const today = new Date().toISOString().slice(0, 10)
@@ -213,6 +215,7 @@ function App() {
       const companyCode = valueAt(row, ['subordinado_empresa_codigo', 'empresa_codigo', 'codigo_empresa', 'company_external_code', 'external_code']).trim()
       const subjectCode = valueAt(row, ['subordinado_matricula_erp', 'codigo_colaborador', 'matricula_colaborador', 'subject_employee_code', 'codigo_subordinado']).trim()
       const relatedCode = valueAt(row, ['gestor_matricula_erp', 'codigo_responsavel', 'matricula_responsavel', 'related_employee_code', 'codigo_gestor', 'codigo_gestor_responsavel']).trim()
+      const relatedCompanyCode = valueAt(row, ['gestor_empresa_codigo', 'empresa_gestor_codigo', 'responsavel_empresa_codigo', 'related_company_code']).trim() || companyCode
       const startsAt = parseImportDate(valueAt(row, ['data_inicio', 'inicio', 'starts_at']))
       const base = { line: index + 2, operation, relationType, companyCode, subjectCode, relatedCode, startsAt: startsAt ?? '', status: 'blocked' as ImportStatus, message: '' }
       if (!['INCLUIR', 'CRIAR'].includes(operation)) return { ...base, message: 'Operação deve ser INCLUIR ou CRIAR.' }
@@ -221,9 +224,10 @@ function App() {
       if (!companyCode || !subjectCode || !relatedCode || !startsAt) return { ...base, message: 'Empresa, colaborador, responsável e data de início válida são obrigatórios.' }
       const company = companyByCode.get(normalizeImportValue(companyCode))
       if (!company) return { ...base, message: 'Empresa não encontrada pelo external_code.' }
+      const relatedCompany = companyByCode.get(normalizeImportValue(relatedCompanyCode))
       const subjectMatches = byCompanyAndCode.get(`${company.id}:${normalizeImportValue(subjectCode)}`) ?? []
-      const relatedMatches = byCompanyAndCode.get(`${company.id}:${normalizeImportValue(relatedCode)}`) ?? []
-      if (subjectMatches.length !== 1 || relatedMatches.length !== 1) return { ...base, companyId: company.id, kind, message: subjectMatches.length !== 1 ? 'Colaborador não encontrado ou ambíguo nos vínculos ativos da empresa.' : 'Responsável não encontrado ou ambíguo nos vínculos ativos da empresa.' }
+      const relatedMatches = relatedCompany ? byCompanyAndCode.get(`${relatedCompany.id}:${normalizeImportValue(relatedCode)}`) ?? [] : []
+      if (subjectMatches.length !== 1 || relatedMatches.length !== 1) return { ...base, companyId: company.id, kind, message: subjectMatches.length !== 1 ? 'Colaborador não encontrado ou ambíguo nos vínculos ativos da empresa.' : !relatedCompany ? 'Empresa do responsável não encontrada pelo external_code.' : 'Responsável não encontrado ou ambíguo nos vínculos ativos da empresa informada.' }
       const subjectEmployeeId = subjectMatches[0].employee_id
       const relatedEmployeeId = relatedMatches[0].employee_id
       if (!employeesById.has(subjectEmployeeId) || !employeesById.has(relatedEmployeeId)) return { ...base, companyId: company.id, kind, subjectEmployeeId, relatedEmployeeId, message: 'Pessoa não encontrada nos cadastros carregados.' }
