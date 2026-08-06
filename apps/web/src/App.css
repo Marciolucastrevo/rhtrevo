@@ -370,3 +370,7 @@ h1 {
 .import-issues { margin-top: 1rem; overflow-x: auto; }.import-issues h4 { margin-bottom: .65rem; color: #254837; }.import-issues table { width: 100%; border-collapse: collapse; font-size: .84rem; }.import-issues th, .import-issues td { border-bottom: 1px solid #e4ece6; padding: .65rem; text-align: left; vertical-align: top; }.import-issues th { color: #4d7562; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; }.import-status { display: inline-block; border-radius: 999px; padding: .18rem .45rem; font-size: .72rem; font-weight: 800; }.import-status.alert { background: #fff4cf; color: #715900; }.import-status.blocked { background: #fbe8e8; color: #9b3131; }
 .import-ready-note { margin-top: 1rem; border-radius: .55rem; background: #edf9f0; padding: .75rem; color: #28533b; font-size: .86rem; }.import-report ul { margin: .75rem 0 0; color: #8d2f2f; }
 @media (max-width: 560px) { .import-totals { grid-template-columns: 1fr; }.import-card-heading { flex-direction: column; }.import-card-heading button { width: 100%; } }
+
+.management-chain { margin: .55rem 0 0; padding-left: 1rem; color: #748077; font-size: .76rem; line-height: 1.45; }
+.management-chain li:first-child { margin-bottom: .18rem; color: #637168; font-weight: 700; list-style: none; margin-left: -1rem; }
+.management-chain li:not(:first-child) { margin-top: .12rem; }
